@@ -4,11 +4,17 @@ version: '3'
 silent: true
 
 vars:
-  GO_MODULE: github.com/maxkgit/chat-service
+  GO_MODULE: github.com/maxkgit/chat-service  # ← ИСПРАВЛЕНО
   GO_FILES:
     sh: find . -type f -name '*.go' -not -path "./vendor/*" -not -path "*.gen.go" | tr "\n" " "
 
-  GOLANGCI_LINT_VERSION: v2.6.1
+  GOLANGCI_LINT_VERSION: v2.6.1  # ← ОБНОВЛЕНО
+  GOLANGCI_LINT_CACHE:
+    sh: echo "$HOME/.cache"  # ← ИСПРАВЛЕНО для Linux
+
+  DEV_TOOLS: |
+    github.com/daixiang0/gci@v0.10.1
+    mvdan.cc/gofumpt@v0.4.0
 
 tasks:
   default:
@@ -20,24 +26,37 @@ tasks:
       - task: build
 
   tidy:
-    cmds:
+    cmds:  # ← ДОБАВЛЕНО
       - echo "- Tidy"
       - go mod tidy
+      - task: vendor
+
+  vendor:
+    cmds:  # ← ДОБАВЛЕНО
+      - echo "- Vendor"
+      - go mod vendor
 
   fmt:
-    cmds:
+    cmds:  # ← ДОБАВЛЕНО
       - echo "- Format"
-      - gofumpt -l -w {{.GO_FILES}}
-      - gci write --skip-generated -s standard -s default -s "prefix({{.GO_MODULE}})" {{.GO_FILES}}
+      - gofumpt -l -w {{.GO_FILES}}  # ← ИСПРАВЛЕНО
+      - gci write --skip-generated -s standard -s default -s "prefix({{.GO_MODULE}})" {{.GO_FILES}}  # ← ИСПРАВЛЕНО
 
   lint:
     cmds:
       - echo "- Lint"
+      - mkdir -p {{.GOLANGCI_LINT_CACHE}}
+      - task: lint:cmd
+        vars: {CLI_ARGS: "run -v --fix --timeout=5m ./..."}
+
+  lint:cmd:
+    cmds:
       - |
         docker run --rm \
           -v "$(pwd):/app" -w /app \
+          -v "{{.GOLANGCI_LINT_CACHE}}:/root/.cache" \
           golangci/golangci-lint:{{.GOLANGCI_LINT_VERSION}} \
-          golangci-lint run -v --timeout=5m ./...
+          golangci-lint {{.CLI_ARGS}}
 
   tests:
     cmds:
@@ -47,7 +66,7 @@ tasks:
   build:
     cmds:
       - echo "- Build"
-      - go build -o ./bin/chat-service ./cmd/chat-service
+      - go build -o ./bin/chat-service ./cmd/chat-service  # ← ИСПРАВЛЕНО
 
   dev-tools:install:
     cmds:
@@ -56,6 +75,6 @@ tasks:
       - go install mvdan.cc/gofumpt@v0.4.0
 
   generate:
-    cmds:
+    cmds:  # ← ДОБАВЛЕНО
       - echo "Run go generate..."
       - go generate ./...
