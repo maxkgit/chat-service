@@ -8,9 +8,7 @@ vars:
   GO_FILES:
     sh: find . -type f -name '*.go' -not -path "./vendor/*" -not -path "*.gen.go" | tr "\n" " "
 
-  GOLANGCI_LINT_VERSION: v1.60.1
-  GOLANGCI_LINT_CACHE:
-    sh: echo "$HOME/.cache"
+  GOLANGCI_LINT_VERSION: v2.6.1
 
 tasks:
   default:
@@ -25,12 +23,6 @@ tasks:
     cmds:
       - echo "- Tidy"
       - go mod tidy
-      - task: vendor
-
-  vendor:
-    cmds:
-      - echo "- Vendor"
-      - go mod vendor
 
   fmt:
     cmds:
@@ -41,18 +33,11 @@ tasks:
   lint:
     cmds:
       - echo "- Lint"
-      - mkdir -p {{.GOLANGCI_LINT_CACHE}}
-      - task: lint:cmd
-        vars: {CLI_ARGS: "run -v --fix --timeout=5m ./..."}
-
-  lint:cmd:
-    cmds:
       - |
         docker run --rm \
           -v "$(pwd):/app" -w /app \
-          -v "{{.GOLANGCI_LINT_CACHE}}:/root/.cache" \
           golangci/golangci-lint:{{.GOLANGCI_LINT_VERSION}} \
-          golangci-lint {{.CLI_ARGS}}
+          golangci-lint run -v --timeout=5m ./...
 
   tests:
     cmds:
